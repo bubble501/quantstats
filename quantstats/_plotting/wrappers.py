@@ -158,7 +158,7 @@ def snapshot(returns, grayscale=False, figsize=(10, 8),
     if show:
         _plt.show(block=False)
 
-    _plt.close()
+    # _plt.close()
 
     if not show:
         return fig
@@ -238,7 +238,7 @@ def earnings(returns, start_balance=1e5, mode="comp",
     if show:
         _plt.show(block=False)
 
-    _plt.close()
+    # _plt.close()
 
     if not show:
         return fig
@@ -265,7 +265,7 @@ def returns(returns, benchmark=None,
     returns = _utils._prepare_returns(returns)
     benchmark = _utils._prepare_benchmark(benchmark, returns.index)
 
-    _core.plot_timeseries(returns, benchmark, title,
+    return _core.plot_timeseries(returns, benchmark, title,
                           ylabel=ylabel,
                           match_volatility=match_volatility,
                           log_scale=False,
@@ -301,7 +301,7 @@ def log_returns(returns, benchmark=None,
     returns = _utils._prepare_returns(returns)
     benchmark = _utils._prepare_benchmark(benchmark, returns.index)
 
-    _core.plot_timeseries(returns, benchmark, title,
+    return _core.plot_timeseries(returns, benchmark, title,
                           ylabel=ylabel,
                           match_volatility=match_volatility,
                           log_scale=True,
@@ -322,7 +322,7 @@ def daily_returns(returns,
                   subtitle=True, savefig=None, show=True):
 
     returns = _utils._prepare_returns(returns)
-    _core.plot_timeseries(returns, None, 'Daily Returns',
+    return _core.plot_timeseries(returns, None, 'Daily Returns',
                           ylabel=ylabel,
                           match_volatility=False,
                           log_scale=log_scale,
@@ -357,7 +357,7 @@ def yearly_returns(returns, benchmark=None,
         returns = returns.apply(_df.cumsum)
     returns = returns.resample('A').last()
 
-    _core.plot_returns_bars(returns, benchmark,
+    return _core.plot_returns_bars(returns, benchmark,
                             fontname=fontname,
                             hline=returns.mean(),
                             hlw=hlw,
@@ -377,7 +377,7 @@ def distribution(returns, fontname='Arial', grayscale=False, ylabel=True,
                  figsize=(10, 6), subtitle=True, compounded=True,
                  savefig=None, show=True):
     returns = _utils._prepare_returns(returns)
-    _core.plot_distribution(returns,
+    return _core.plot_distribution(returns,
                             fontname=fontname,
                             grayscale=grayscale,
                             figsize=figsize,
@@ -422,7 +422,7 @@ def drawdown(returns, grayscale=False, figsize=(10, 5),
 
     dd = _stats.to_drawdown_series(returns)
 
-    _core.plot_timeseries(dd, title='Underwater Plot',
+    return _core.plot_timeseries(dd, title='Underwater Plot',
                           hline=dd.mean(), hlw=2, hllabel="Average",
                           returns_label="Drawdown",
                           compound=compound, match_volatility=match_volatility,
@@ -439,7 +439,7 @@ def drawdowns_periods(returns, periods=5, lw=1.5, log_scale=False,
                       ylabel=True, subtitle=True, compounded=True,
                       savefig=None, show=True):
     returns = _utils._prepare_returns(returns)
-    _core.plot_longest_drawdowns(returns,
+    return _core.plot_longest_drawdowns(returns,
                                  periods=periods,
                                  lw=lw,
                                  log_scale=log_scale,
@@ -462,7 +462,7 @@ def rolling_beta(returns, benchmark,
     returns = _utils._prepare_returns(returns)
     benchmark = _utils._prepare_benchmark(benchmark, returns.index)
 
-    _core.plot_rolling_beta(returns, benchmark,
+    return _core.plot_rolling_beta(returns, benchmark,
                             window1=window1, window1_label=window1_label,
                             window2=window2, window2_label=window2_label,
                             title="Rolling Beta to Benchmark",
@@ -487,7 +487,7 @@ def rolling_volatility(returns, benchmark=None,
         benchmark = _utils._prepare_benchmark(benchmark, returns.index)
         benchmark = benchmark.rolling(period).std() * _np.sqrt(252)
 
-    _core.plot_rolling_stats(returns, benchmark,
+    return _core.plot_rolling_stats(returns, benchmark,
                              hline=returns.mean(),
                              hlw=1.5,
                              ylabel=ylabel,
@@ -515,7 +515,7 @@ def rolling_sharpe(returns, benchmark=None, rf=0.,
             period).mean() / benchmark.rolling(period).std()
         benchmark = benchmark * _np.sqrt(1 if period is None else period)
 
-    _core.plot_rolling_stats(returns, benchmark,
+    return _core.plot_rolling_stats(returns, benchmark,
                              hline=returns.mean(),
                              hlw=1.5,
                              ylabel=ylabel,
@@ -544,7 +544,7 @@ def rolling_sortino(returns, benchmark=None, rf=0.,
             benchmark < 0].rolling(period).std()
         benchmark = benchmark * _np.sqrt(1 if period is None else period)
 
-    _core.plot_rolling_stats(returns, benchmark,
+    return _core.plot_rolling_stats(returns, benchmark,
                              hline=returns.mean(),
                              hlw=1.5,
                              ylabel=ylabel,
@@ -627,7 +627,7 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
     if show:
         _plt.show(block=False)
 
-    _plt.close()
+    # _plt.close()
 
     if not show:
         return fig
