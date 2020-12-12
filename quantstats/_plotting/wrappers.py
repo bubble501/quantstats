@@ -251,9 +251,9 @@ def returns(returns, benchmark=None,
             fontname='Arial', lw=1.5,
             match_volatility=False, compound=True, cumulative=True,
             resample=None, ylabel="Cumulative Returns",
-            subtitle=True, savefig=None, show=True):
+            subtitle=True, savefig=None, show=True, fig_type="plotly"):
 
-    title = 'Cumulative Returns' if compound else 'Returns'
+    title = '累计收益率' if compound else '收益率'
     if benchmark is not None:
         if isinstance(benchmark, str):
             title += ' vs %s' % benchmark.upper()
@@ -276,7 +276,7 @@ def returns(returns, benchmark=None,
                           figsize=figsize,
                           fontname=fontname,
                           grayscale=grayscale,
-                          subtitle=subtitle, savefig=savefig, show=show)
+                          subtitle=subtitle, savefig=savefig, show=show, fig_type=fig_type)
 
 
 def log_returns(returns, benchmark=None,

@@ -34,6 +34,7 @@ import pandas as _pd
 import numpy as _np
 import seaborn as _sns
 from .. import stats as _stats
+import plotly.graph_objs as go
 
 _sns.set(font_scale=1.1, rc={
     'figure.figsize': (10, 6),
@@ -180,7 +181,7 @@ def plot_timeseries(returns, benchmark=None,
                     percent=True, match_volatility=False, log_scale=False,
                     resample=None, lw=1.5, figsize=(10, 6), ylabel="",
                     grayscale=False, fontname="Arial",
-                    subtitle=True, savefig=None, show=True):
+                    subtitle=True, savefig=None, show=True, fig_type="plotly"):
 
     colors, ls, alpha = _get_colors(grayscale)
 
@@ -214,7 +215,43 @@ def plot_timeseries(returns, benchmark=None,
             benchmark = benchmark.last(
             ) if compound is True else benchmark.sum()
     # ---------------
+    
+    # using pltoly
+    if fig_type=="plotly":
 
+        fig_dict = {
+            "data": [{
+                'type': 'scatter',
+                'x': returns.index,
+                'y': returns.values
+            }],
+            "layout": {
+                "title": title
+            }
+        }
+
+        fig = go.Figure(fig_dict)
+        fig.update_layout(margin=dict(l=10, r=10))
+        fig.update_layout(legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ))
+        fig.update_layout(hovermode="x unified", xaxis_tickformat="%Y年%m月", yaxis_tickformat=".2%")
+        fig.update_layout(title_text=title, title_x=0.5)
+        fig.update_xaxes(tickangle=45, title_font={"size": 20}, title_standoff=25)
+        return fig
+
+        
+        
+
+
+
+
+
+    # using matplotlib
     fig, ax = _plt.subplots(figsize=figsize)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
