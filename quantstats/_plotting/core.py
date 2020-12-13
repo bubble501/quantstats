@@ -70,7 +70,7 @@ def plot_returns_bars(returns, benchmark=None,
                       resample="A", title="Returns", match_volatility=False,
                       log_scale=False, figsize=(10, 6),
                       grayscale=False, fontname='Arial', ylabel=True,
-                      subtitle=True, savefig=None, show=True):
+                      subtitle=True, savefig=None, show=True, fig_type="plotly"):
 
     if match_volatility and benchmark is None:
         raise ValueError('match_volatility requires passing of '
@@ -92,6 +92,33 @@ def plot_returns_bars(returns, benchmark=None,
             _stats.comp).resample(resample).last()
     # ---------------
 
+    if fig_type == "plotly":
+        fig_dict = {
+            "data": [{
+                'type': 'bar',
+                'x': df.index,
+                'y': df[returns_label] 
+            }],
+            "layout": {
+                "title": title,
+                "bargap": 0.5
+            }
+        }
+
+        fig = go.Figure(fig_dict)
+        fig.update_layout(margin=dict(l=10, r=10))
+        fig.update_layout(legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ))
+        fig.update_layout(hovermode="x unified", xaxis_tickformat="%Y年", yaxis_tickformat=".2%")
+        fig.update_layout(title_text=title, title_x=0.5)
+        fig.update_xaxes(tickangle=90, title_font={"size": 20}, title_standoff=0)
+        return fig
+        
     fig, ax = _plt.subplots(figsize=figsize)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)

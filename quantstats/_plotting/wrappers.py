@@ -341,9 +341,9 @@ def yearly_returns(returns, benchmark=None,
                    match_volatility=False,
                    log_scale=False, figsize=(10, 5), ylabel=True,
                    subtitle=True, compounded=True,
-                   savefig=None, show=True):
+                   savefig=None, show=True, fig_type="plotly"):
 
-    title = 'EOY Returns'
+    title = '逐年收益率明细'
     if benchmark is not None:
         title += '  vs Benchmark'
         benchmark = _utils._prepare_benchmark(
@@ -370,7 +370,7 @@ def yearly_returns(returns, benchmark=None,
                             figsize=figsize,
                             grayscale=grayscale,
                             ylabel=ylabel,
-                            subtitle=subtitle, savefig=savefig, show=show)
+                            subtitle=subtitle, savefig=savefig, show=show, fig_type=fig_type)
 
 
 def distribution(returns, fontname='Arial', grayscale=False, ylabel=True,
