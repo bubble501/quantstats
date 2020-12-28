@@ -35,6 +35,10 @@ import numpy as _np
 import seaborn as _sns
 from .. import stats as _stats
 import plotly.graph_objs as go
+import plotly.figure_factory as ff
+import plotly.express as ep
+import datetime
+import math
 
 _sns.set(font_scale=1.1, rc={
     'figure.figsize': (10, 6),
@@ -85,23 +89,37 @@ def plot_returns_bars(returns, benchmark=None,
     if isinstance(benchmark, _pd.Series):
         df['Benchmark'] = benchmark[benchmark.index.isin(returns.index)]
         df = df[['Benchmark', returns_label]]
-
+    
     df = df.dropna()
     if resample is not None:
         df = df.resample(resample).apply(
             _stats.comp).resample(resample).last()
     # ---------------
-
+   
+    # import pdb; pdb.set_trace()
+    
+     
     if fig_type == "plotly":
+        df["color"] = 'rgb(255, 255, 255)'
+        df.loc[df[returns_label] < 0.0, 'color'] = 'rgb(0, 255, 0)'
+        df.loc[df[returns_label] > 0.0, 'color'] = 'rgb(255, 0, 0)'
+        # df['width'] = 5
+        df.index = df.index.strftime('%Y年')
+        if len(df) < 4:
+            bargap = 0.9
+        else:
+            bargap = 0.5
         fig_dict = {
             "data": [{
                 'type': 'bar',
                 'x': df.index,
-                'y': df[returns_label] 
+                'y': df[returns_label],
+                'marker': dict(color=df['color'].tolist())
+                # 'width': df['width'].tolist()
             }],
             "layout": {
                 "title": title,
-                "bargap": 0.5
+                "bargap": bargap
             }
         }
 
@@ -116,7 +134,21 @@ def plot_returns_bars(returns, benchmark=None,
             ))
         fig.update_layout(hovermode="x unified", xaxis_tickformat="%Y年", yaxis_tickformat=".2%")
         fig.update_layout(title_text=title, title_x=0.5)
-        fig.update_xaxes(tickangle=90, title_font={"size": 20}, title_standoff=0)
+        fig.update_xaxes(tickangle=45, title_font={"size": 20}, title_standoff=0)
+           
+        # fig.add_hline(y=0.1)
+        # fig.add_vline(x=0.1)
+        if hline:
+            if grayscale:
+                hlcolor = 'black'
+            fig.add_hline(y=hline, line_dash="dot", line_width=3, line_color=hlcolor,
+              annotation_text=hllabel, 
+              annotation_position="top right") 
+
+        # if len(df) < 5:
+        #     fig.update_layout(xaxis_range=[datetime.datetime(2020, 1, 5), datetime.datetime(2020, 1, 6)])
+      
+     
         return fig
         
     fig, ax = _plt.subplots(figsize=figsize)
@@ -208,11 +240,13 @@ def plot_timeseries(returns, benchmark=None,
                     percent=True, match_volatility=False, log_scale=False,
                     resample=None, lw=1.5, figsize=(10, 6), ylabel="",
                     grayscale=False, fontname="Arial",
-                    subtitle=True, savefig=None, show=True, fig_type="plotly"):
+                    subtitle=True, savefig=None, show=True, fig_type="plotly", titles=None):
 
     colors, ls, alpha = _get_colors(grayscale)
 
-    returns.fillna(0, inplace=True)
+    if isinstance(returns, list) == False:
+        returns = [returns]
+    [ret.fillna(0, inplace=True) for ret in returns]
     if isinstance(benchmark, _pd.Series):
         benchmark.fillna(0, inplace=True)
 
@@ -221,12 +255,12 @@ def plot_timeseries(returns, benchmark=None,
                          'benchmark.')
     if match_volatility and benchmark is not None:
         bmark_vol = benchmark.std()
-        returns = (returns / returns.std()) * bmark_vol
+        returns = [(ret/ ret.std()) * bmark_vol for ret in returns]
 
     # ---------------
     if compound is True:
         if cumulative:
-            returns = _stats.compsum(returns)
+            returns = [_stats.compsum(ret) for ret in returns]
             if isinstance(benchmark, _pd.Series):
                 benchmark = _stats.compsum(benchmark)
         else:
@@ -235,8 +269,9 @@ def plot_timeseries(returns, benchmark=None,
                 benchmark = benchmark.cumsum()
 
     if resample:
-        returns = returns.resample(resample)
-        returns = returns.last() if compound is True else returns.sum()
+        # returns = returns.resample(resample)
+        returns = [ret.resample(resample) for ret in returns]
+        returns = [ret.last() if compound is True else ret.sum() for ret in returns]
         if isinstance(benchmark, _pd.Series):
             benchmark = benchmark.resample(resample)
             benchmark = benchmark.last(
@@ -245,30 +280,57 @@ def plot_timeseries(returns, benchmark=None,
     
     # using pltoly
     if fig_type=="plotly":
+        filled = None
+        if fill:
+            filled = "tozeroy"
 
+        data = []
+        i = 0
+        for ret in returns:
+            title = ""
+            if titles and len(titles) > i:
+                title = titles[i]
+
+            i = i + 1
+            data.append({
+                "type": 'scatter',
+                'x': ret.index,
+                'y': ret.values,
+                'fill': filled,
+                'name': title
+            })
+        if isinstance(benchmark, _pd.Series):
+            data.append({
+                "type": "scatter",
+                'x': benchmark.index,
+                'y': benchmark.values,
+                'fill': filled,
+                "name": titles[i]
+            })
         fig_dict = {
-            "data": [{
-                'type': 'scatter',
-                'x': returns.index,
-                'y': returns.values
-            }],
+            "data": data,
             "layout": {
                 "title": title
             }
         }
 
         fig = go.Figure(fig_dict)
-        fig.update_layout(margin=dict(l=10, r=10))
-        fig.update_layout(legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            ))
-        fig.update_layout(hovermode="x unified", xaxis_tickformat="%Y年%m月", yaxis_tickformat=".2%")
-        fig.update_layout(title_text=title, title_x=0.5)
+        # fig.update_layout(margin=dict(l=10, r=1))
+        # fig.update_layout(legend=dict(
+        #         orientation="h",
+        #         yanchor="bottom",
+        #         y=1.02,
+        #         xanchor="right",
+        #         x=1
+        #     ))
+        fig.update_layout(hovermode="x unified", xaxis_tickformat="%Y年%m月%d日", yaxis_tickformat=".2%")
+        # fig.update_layout(title_text=title, title_x=0.5, title_text__title="hello")
         fig.update_xaxes(tickangle=45, title_font={"size": 20}, title_standoff=25)
+        if hline:
+            if grayscale:
+                hlcolor = 'black'
+            fig.add_hline(y=hline, line_width=3, line_dash="dash", line_color=hlcolor)
+        # fig.update_layout(paper_bgcolor="rgba(11, 11, 11, 11)")
         return fig
 
         
@@ -366,11 +428,11 @@ def plot_timeseries(returns, benchmark=None,
     return None
 
 
-def plot_histogram(returns, resample="M", bins=20,
+def plot_histogram(returns, resample="M", bins=100,
                    fontname='Arial', grayscale=False,
                    title="Returns", kde=True, figsize=(10, 6),
                    ylabel=True, subtitle=True, compounded=True,
-                   savefig=None, show=True):
+                   savefig=None, show=True, fig_type="plotly"):
 
     colors = ['#348dc1', '#003366', 'red']
     if grayscale:
@@ -379,6 +441,49 @@ def plot_histogram(returns, resample="M", bins=20,
     apply_fnc = _stats.comp if compounded else _np.sum
     returns = returns.fillna(0).resample(resample).apply(
         apply_fnc).resample(resample).last()
+
+
+    if fig_type=="plotly":
+        # fig = ff.create_distplot([returns.values], [title], bin_size=0.01)
+        fig = ep.histogram(x=returns, nbins=bins)
+        
+        fig.add_vline(x=0.0, line_width=1, line_color="black")
+        fig.add_vline(x=returns.mean(), line_color="red", line_dash="dot")
+        fig.update_layout(xaxis_tickformat=".2%")
+        fig.update_layout(title_text=title, title_x=0.5, yaxis_title="数量", xaxis_title="收益率")
+        fig.update_traces(hovertemplate='收益率:%{x}<br>月份数:%{y}')
+        fig.update_layout(margin=dict(l=10, r=10))
+        return fig
+
+        
+        # fig_dict = {
+        #     "data": [{
+        #         'type': 'scatter',
+        #         'x': returns.index,
+        #         'y': returns.values
+        #     }],
+        #     "layout": {
+        #         "title": title
+        #     }
+        # }
+
+        # fig = go.Figure(fig_dict)
+        # fig.update_layout(margin=dict(l=10, r=10))
+        # fig.update_layout(legend=dict(
+        #         orientation="h",
+        #         yanchor="bottom",
+        #         y=1.02,
+        #         xanchor="right",
+        #         x=1
+        #     ))
+        # fig.update_layout(hovermode="x unified", xaxis_tickformat="%Y年%m月", yaxis_tickformat=".2%")
+        # fig.update_layout(title_text=title, title_x=0.5)
+        # fig.update_xaxes(tickangle=45, title_font={"size": 20}, title_standoff=25)
+        # if hline:
+        #     if grayscale:
+        #         hlcolor = 'black'
+        #     fig.add_vline(x=hline, line_width=3, line_dash="dash", line_color=hlcolor)
+        # return fig
 
     fig, ax = _plt.subplots(figsize=figsize)
     ax.spines['top'].set_visible(False)
@@ -616,16 +721,58 @@ def plot_longest_drawdowns(returns, periods=5, lw=1.5,
                            fontname='Arial', grayscale=False,
                            log_scale=False, figsize=(10, 6), ylabel=True,
                            subtitle=True, compounded=True,
-                           savefig=None, show=True):
+                           savefig=None, show=True, fig_type="plotly"):
 
     colors = ['#348dc1', '#003366', 'red']
     if grayscale:
         colors = ['#000000'] * 3
 
+    series = _stats.compsum(returns) if compounded else returns.cumsum()
     dd = _stats.to_drawdown_series(returns.fillna(0))
     dddf = _stats.drawdown_details(dd)
     longest_dd = dddf.sort_values(
         by='days', ascending=False, kind='mergesort')[:periods]
+
+    if fig_type == "plotly":
+        fig_dict = {
+            "data": [{
+                'type': 'scatter',
+                'x': series.index,
+                'y': series.values
+            }]
+            # "layout": {
+            #     "title": title
+            # }
+        }
+
+        fig = go.Figure(fig_dict)
+        fig.update_layout(margin=dict(l=10, r=10))
+        fig.update_layout(legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ))
+
+        title = f"前{len(longest_dd)}大回撤区间分布图"
+        for _, row in longest_dd.iterrows():
+            # fig.add_vrect(x0="2018-09-24", x1="2018-12-18", row="all", col=1,
+            #   annotation_text="decline", annotation_position="top left",
+            #   fillcolor="green", opacity=0.25, line_width=0)
+            # fig.add_vrect(x0=row['start'], x1=row['end'], row="all", col=1,
+            text = f"{row['start']}~{row['end']}"
+            fig.add_vrect(x0=row['start'], x1=row['end'], 
+            #   annotation_text=text, annotation_position="top left",
+              fillcolor="green", opacity=0.25, line_width=0)
+        # ax.axvspan(*_mdates.datestr2num([str(row['start']), str(row['end'])]),
+        #            color=highlight, alpha=.1)
+        fig.update_layout(hovermode="x unified", xaxis_tickformat="%Y年%m月", yaxis_tickformat=".2%")
+        fig.update_layout(title_text=title, title_x=0.5)
+        fig.update_xaxes(tickangle=45, title_font={"size": 20}, title_standoff=25)
+     
+        return fig
+
 
     fig, ax = _plt.subplots(figsize=figsize)
     ax.spines['top'].set_visible(False)
@@ -701,7 +848,7 @@ def plot_longest_drawdowns(returns, periods=5, lw=1.5,
 def plot_distribution(returns, figsize=(10, 6),
                       fontname='Arial', grayscale=False, ylabel=True,
                       subtitle=True, compounded=True,
-                      savefig=None, show=True):
+                      savefig=None, show=True, fig_type="plotly"):
 
     colors = _FLATUI_COLORS
     if grayscale:
@@ -729,6 +876,17 @@ def plot_distribution(returns, figsize=(10, 6),
         'A').apply(apply_fnc).resample('A').last()
     port['Yearly'].ffill(inplace=True)
 
+    port = port.rename(columns={"Daily": "日" , "Weekly": "周", "Monthly": "月", "Quarterly": "季", "Yearly": "年"})
+
+  
+    if fig_type == "plotly":
+        fig = ep.box(port, y=port.columns)
+        fig.update_layout(yaxis_tickformat=".2%")
+        fig.update_xaxes(title_text="")
+        fig.update_yaxes(title_text="收益率")
+        fig.update_layout(margin=dict(l=10, r=10))
+        # fig.update_layout(paper_bgcolor="rgba(11, 11, 11, 11)")
+        return fig
     fig, ax = _plt.subplots(figsize=figsize)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)

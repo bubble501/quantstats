@@ -28,12 +28,14 @@ from matplotlib.ticker import (
 import numpy as _np
 from pandas import DataFrame as _df
 import seaborn as _sns
+import plotly.figure_factory as ff
 
 from .. import (
     stats as _stats, utils as _utils,
 )
 
 from . import core as _core
+from datetime import timedelta
 
 
 _FLATUI_COLORS = ["#fedd78", "#348dc1", "#af4b64",
@@ -251,9 +253,10 @@ def returns(returns, benchmark=None,
             fontname='Arial', lw=1.5,
             match_volatility=False, compound=True, cumulative=True,
             resample=None, ylabel="Cumulative Returns",
-            subtitle=True, savefig=None, show=True, fig_type="plotly"):
+            subtitle=True, savefig=None, show=True, fig_type="plotly",
+            titles=None):
 
-    title = '累计收益率' if compound else '收益率'
+    title = u'累计收益率' if compound else u'收益率'
     if benchmark is not None:
         if isinstance(benchmark, str):
             title += ' vs %s' % benchmark.upper()
@@ -261,11 +264,17 @@ def returns(returns, benchmark=None,
             title += ' vs Benchmark'
         if match_volatility:
             title += ' (Volatility Matched)'
+    
+    rets = []
+    for ret in returns:
+        rets.append(_utils._prepare_returns(ret))
+    if len(rets) > 1:
+        benchmark = rets[-1]
+        rets = rets[:-1]
+    
+    benchmark = _utils._prepare_benchmark(benchmark, rets[0].index)
 
-    returns = _utils._prepare_returns(returns)
-    benchmark = _utils._prepare_benchmark(benchmark, returns.index)
-
-    return _core.plot_timeseries(returns, benchmark, title,
+    return _core.plot_timeseries(rets, benchmark, title,
                           ylabel=ylabel,
                           match_volatility=match_volatility,
                           log_scale=False,
@@ -276,7 +285,11 @@ def returns(returns, benchmark=None,
                           figsize=figsize,
                           fontname=fontname,
                           grayscale=grayscale,
-                          subtitle=subtitle, savefig=savefig, show=show, fig_type=fig_type)
+                          subtitle=subtitle, 
+                          savefig=savefig, 
+                          show=show, 
+                          fig_type=fig_type,
+                          titles=titles)
 
 
 def log_returns(returns, benchmark=None,
@@ -319,10 +332,10 @@ def daily_returns(returns,
                   grayscale=False, figsize=(10, 4),
                   fontname='Arial', lw=0.5,
                   log_scale=False, ylabel="Returns",
-                  subtitle=True, savefig=None, show=True):
+                  subtitle=True, savefig=None, show=True, fig_type="plotly"):
 
     returns = _utils._prepare_returns(returns)
-    return _core.plot_timeseries(returns, None, 'Daily Returns',
+    return _core.plot_timeseries(returns, None, '逐日收益率明细',
                           ylabel=ylabel,
                           match_volatility=False,
                           log_scale=log_scale,
@@ -332,7 +345,7 @@ def daily_returns(returns,
                           figsize=figsize,
                           fontname=fontname,
                           grayscale=grayscale,
-                          subtitle=subtitle, savefig=savefig, show=show)
+                          subtitle=subtitle, savefig=savefig, show=show, fig_type=fig_type)
 
 
 def yearly_returns(returns, benchmark=None,
@@ -356,10 +369,13 @@ def yearly_returns(returns, benchmark=None,
     else:
         returns = returns.apply(_df.cumsum)
     returns = returns.resample('A').last()
-
+    returns.index = returns.index - timedelta(days=360)
+    hline = returns.mean()
+    hllabel = f"算术年均收益率{hline:.2%}"
+   
     return _core.plot_returns_bars(returns, benchmark,
                             fontname=fontname,
-                            hline=returns.mean(),
+                            hline=hline,
                             hlw=hlw,
                             hllabel=hllabel,
                             hlcolor=hlcolor,
@@ -375,7 +391,7 @@ def yearly_returns(returns, benchmark=None,
 
 def distribution(returns, fontname='Arial', grayscale=False, ylabel=True,
                  figsize=(10, 6), subtitle=True, compounded=True,
-                 savefig=None, show=True):
+                 savefig=None, show=True, fig_type="plotly"):
     returns = _utils._prepare_returns(returns)
     return _core.plot_distribution(returns,
                             fontname=fontname,
@@ -384,22 +400,22 @@ def distribution(returns, fontname='Arial', grayscale=False, ylabel=True,
                             ylabel=ylabel,
                             subtitle=subtitle,
                             compounded=compounded,
-                            savefig=savefig, show=show)
+                            savefig=savefig, show=show, fig_type=fig_type)
 
 
 def histogram(returns, resample='M', fontname='Arial',
               grayscale=False, figsize=(10, 5), ylabel=True,
-              subtitle=True, compounded=True, savefig=None, show=True):
+              subtitle=True, compounded=True, savefig=None, show=True, fig_type="plotly"):
 
     returns = _utils._prepare_returns(returns)
     if resample == 'W':
-        title = "Weekly "
+        title = "周"
     elif resample == 'M':
-        title = "Monthly "
+        title = "月"
     elif resample == 'Q':
-        title = "Quarterly "
+        title = "季"
     elif resample == 'A':
-        title = "Annual "
+        title = "年"
     else:
         title = ""
 
@@ -407,22 +423,25 @@ def histogram(returns, resample='M', fontname='Arial',
                                 resample=resample,
                                 grayscale=grayscale,
                                 fontname=fontname,
-                                title="Distribution of %sReturns" % title,
+                                title="%s收益率分布" % title,
                                 figsize=figsize,
                                 ylabel=ylabel,
                                 subtitle=subtitle,
                                 compounded=compounded,
-                                savefig=savefig, show=show)
+                                savefig=savefig, show=show, fig_type=fig_type)
 
 
 def drawdown(returns, grayscale=False, figsize=(10, 5),
              fontname='Arial', lw=1, log_scale=False,
              match_volatility=False, compound=False, ylabel="Drawdown",
-             resample=None, subtitle=True, savefig=None, show=True):
+             resample=None, subtitle=True, savefig=None, show=True, fig_type="plotly"):
 
     dd = _stats.to_drawdown_series(returns)
 
-    return _core.plot_timeseries(dd, title='Underwater Plot',
+    # if dd.shape[0] == 0:
+    #     return None
+
+    return _core.plot_timeseries(dd, title='回撤分布图',
                           hline=dd.mean(), hlw=2, hllabel="Average",
                           returns_label="Drawdown",
                           compound=compound, match_volatility=match_volatility,
@@ -431,13 +450,13 @@ def drawdown(returns, grayscale=False, figsize=(10, 5),
                           ylabel=ylabel,
                           fontname=fontname, grayscale=grayscale,
                           subtitle=subtitle,
-                          savefig=savefig, show=show)
+                          savefig=savefig, show=show, fig_type=fig_type)
 
 
 def drawdowns_periods(returns, periods=5, lw=1.5, log_scale=False,
                       fontname='Arial', grayscale=False, figsize=(10, 5),
                       ylabel=True, subtitle=True, compounded=True,
-                      savefig=None, show=True):
+                      savefig=None, show=True, fig_type="plotly"):
     returns = _utils._prepare_returns(returns)
     return _core.plot_longest_drawdowns(returns,
                                  periods=periods,
@@ -449,7 +468,7 @@ def drawdowns_periods(returns, periods=5, lw=1.5, log_scale=False,
                                  ylabel=ylabel,
                                  subtitle=subtitle,
                                  compounded=compounded,
-                                 savefig=savefig, show=show)
+                                 savefig=savefig, show=show, fig_type=fig_type)
 
 
 def rolling_beta(returns, benchmark,
@@ -560,13 +579,56 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
                     cbar=True, square=False,
                     compounded=True, eoy=False,
                     grayscale=False, fontname='Arial',
-                    ylabel=True, savefig=None, show=True):
+                    ylabel=True, savefig=None, show=True, fig_type="plotly"):
 
     # colors, ls, alpha = _core._get_colors(grayscale)
     cmap = 'gray' if grayscale else 'RdYlGn'
 
     returns = _stats.monthly_returns(returns, eoy=eoy,
                                      compounded=compounded) * 100
+    returns = returns.round(2).rename(columns={
+        "JAN": "一月",
+        "FEB": "二月",
+        "MAR": "三月",
+        "APR": "四月",
+        "MAY": "五月",
+        "JUN": "六月",
+        "JUL": "七月",
+        "AUG": "八月",
+        "SEP": "九月",
+        "OCT": "十月",
+        "NOV": "十一月",
+        "DEC": "十二月"})
+    # import pdb; pdb.set_trace()
+    if fig_type == "plotly":
+        colorscale = [[0, "rgb(102, 255, 0)"], [0.5, "rgb(255, 255, 255)"], [1, "rgb(255, 40, 0)"]]
+        # colorscale=["green", "red"]
+        # colorscale= [[-30.0, 'rgb(0,255,0)'], 
+        #     [0.0, 'rgb(255, 255, 255)'],[30.0, 'rgb(255, 0, 0)']]
+        # hover_text = 
+        fig = ff.create_annotated_heatmap(z=returns.to_numpy(),
+                        x=returns.columns.tolist(),
+                        y=[ f"{x}年" for x in returns.index.tolist()],
+                        colorscale=colorscale,
+                        font_colors=['black'],
+                        zmin=-30, zmax=30,hoverinfo="text", text= returns.to_numpy())
+        fig.update_layout(
+                # margin=dict(l=1, r=1, t=1, b=1), 
+                font=dict(size=10),
+                # title = {
+                #     'text': '逐月收益率明细(%)',
+                #     'y': 0.98,
+                #     'x': 0.5,
+                #     'xanchor': 'center',
+                #     'yanchor': 'top'
+                # },
+                autosize=True)
+                # width=20*len(returns),
+                # height=25*len(returns)+80)
+                # paper_bgcolor="LightSteelBlue")
+
+
+        return fig
 
     fig_height = len(returns) / 3
 
