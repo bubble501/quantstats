@@ -24,6 +24,10 @@ import numpy as _np
 import yfinance as _yf
 from . import stats as _stats
 
+def _wtd(df):
+    today = _dt.datetime.now().date()
+    week_start = today - _dt.timedelta(days=today.weekday())
+    return df[df.index >= week_start.strftime('%Y-%m-%d')]
 
 def _mtd(df):
     return df[df.index >= _dt.datetime.now(

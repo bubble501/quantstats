@@ -714,3 +714,21 @@ def monthly_returns(returns, eoy=True, compounded=True):
     returns.index.name = None
 
     return returns
+
+def today_ret_summary(returns):
+    func_dict = {
+        # "day": returns[-1],
+        "week": _utils._wtd,
+        "month": _utils._mtd,
+        "quarter": _utils._qtd,
+        "year": _utils._ytd
+    }
+    rets = {}
+    for name, func in func_dict.items():
+        df = func(returns)
+        rets[name] = comp(df)[0]
+
+    rets["day"] = returns.iloc[-1, 0]
+    rets["all"] = comp(returns)[0]
+    return rets
+ 
